@@ -4,6 +4,7 @@ import json
 import csv
 import os
 
+# Comment
 stopThread = False
 inRoom = False
 
