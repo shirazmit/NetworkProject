@@ -4,6 +4,7 @@ class User:
     def __init__(self, name, client):
         self.name = name
         self.client = client
+        self.room = None
 
     def get_name(self):
         return self.name
@@ -16,3 +17,9 @@ class User:
 
     def set_client(self, client):
         self.client = client
+
+    def get_room(self):
+        return self.room
+
+    def set_room(self, room):
+        self.room = room

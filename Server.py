@@ -6,6 +6,7 @@ import datetime
 import os
 from User import User
 from Room import Room
+import time
 
 #from cryptography.hazmat.backends import default_backend
 #from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -15,7 +16,7 @@ from Room import Room
 #localhost
 
 host = '127.0.0.1'
-port = 55555
+port = 8000
 format = 'utf-8'
 
 #connection
@@ -27,50 +28,50 @@ users = []
 rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
 
 #broadcast message that sends to all the clients
-def broadcast(message):
-    for user in users:
-        user.get_client().send(message)
+def broadcast(message, room):
+    try:
+        for user in room.get_users():
+            user.get_client().send(message)
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
 def handle(user):
-
     while True:
         try:
-            buffer = user.get_client().recv(1024)
-            msg = message = user.get_client().recv(1024)
+            buffer = user.get_client().recv(1024).decode('ascii')
+            if buffer:
+                if buffer.startswith('l'):
+                    roomList = "l"
+                    for room in rooms:
+                        roomList = roomList + room.get_name() + "\n"
 
-            if buffer.startswith('r'):
-                for room in rooms:
-                    if room == buffer[1:]:
-                        user.get_client().send(buffer.encode('ascii'))
-                        room.get_users().append(user)
-                user.get_client().send('f'.encode('ascii'))
-                
-            if msg.decode('ascii').startswith('KICK'):
-                print("Test")
-                if user.get_name() == 'admin':
-                    kick_name = msg.decode('ascii')[5:]
-                    kick_user(kick_name)
-                else:
-                    user.get_client().send('Command was refused!'.encode('ascii'))
-            elif msg.decode('ascii').startswith('BAN'):
-                if user.get_name() == 'admin':
-                    ban_name = msg.decode('ascii')[4:]
-                    kick_user(ban_name)
-                    with open('bans.txt','a') as f:
-                        f.write(f'{ban_name}\n')
-                    print(f'{ban_name} was banned!')
-                else:
-                    user.get_client().send('Command was refused!'.encode('ascii'))
-            else:
-                broadcast(message)
-                Room.log_chat_message(user.get_name(), message.decode('ascii'))
+                    try:
+                        user.get_client().send(roomList.encode('ascii'))
+                    except Exception as e:
+                        print(f"An exception occurred: {e}")
+
+                elif buffer.startswith('r'):
+                    valid_room = False
+                    for room in rooms:
+                        if room.get_name() == buffer[1:]:
+                            valid_room = True
+                            user.get_client().send(buffer.encode('ascii'))
+                            room.get_users().append(user)
+                            broadcast(f'{user.get_name()} joined the chat!'.encode('ascii'), room)
+                            user.set_room(room)
+                    if not valid_room:
+                        user.get_client().send('l'.encode('ascii'))
+
+                elif buffer.startswith('m'):
+                    broadcast(buffer, user.get_room())
+                    Room.log_chat_message(user.get_name(), buffer.decode('ascii'))
                 
         except Exception as e:
             # Print the exception
             print(f"An exception occurred: {e}")
             if user in users:
                 user.get_client().close()
-                broadcast(f'{user.get_name()} left the chat.'.encode('ascii'))
+                broadcast(f'{user.get_name()} left the chat.'.encode('ascii'), user.get_room())
                 users.remove(user)
                 break
 """"
@@ -87,14 +88,18 @@ def handle(user):
         except:
              print("[CLIENT CONNECTION INTERRUPTED] on address: ", addr)
 """
+
 def receive():
     print("Server is waiting for connection...")
     while True:
         client, address = server.accept()
         print(f'Connected with {str(address)}')
 
-        client.send('NICK'.encode('ascii'))
-        username = client.recv(1024).decode('ascii')
+        try:
+            client.send('NICK'.encode('ascii'))
+            username = client.recv(1024).decode('ascii')
+        except Exception as e:
+            print(f"An exception occurred: {e}")
 
         with open('bans.txt', 'r') as f:
             bans = f.readlines()
@@ -117,13 +122,7 @@ def receive():
         users.append(user)
 
         print(f'The name of the client is {username}.')
-        broadcast(f'{username} joined the chat!'.encode('ascii'))
 
-        roomList = ""
-        for room in rooms:
-            roomList = roomList + room.get_name() + "\n"
-        client.send(roomList.encode('ascii'))
-        
         thread = threading.Thread(target=handle, args=(user,))
         thread.start()
 

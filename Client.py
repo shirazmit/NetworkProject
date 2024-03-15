@@ -3,10 +3,11 @@ import threading
 import json
 import csv
 import os
+import time
 
 # Comment
 stopThread = False
-inRoom = False
+is_in_room = False
 
 def main():
     #if username == 'admin':
@@ -23,7 +24,7 @@ def main():
     #connection to the server
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        client.connect(('127.0.0.1', 55555))
+        client.connect(('127.0.0.1',8000))
     except Exception as e:
         print(f"Error connecting to the server: {e}")
         input("Press Enter to exit")
@@ -32,60 +33,52 @@ def main():
     #receive message from the server and sent it to the server
     receive_thread = threading.Thread(target=receive, args=(client, username, password))
     receive_thread.start()
-    write_thread = threading.Thread(target=write, args=(client, username))
-    write_thread.start()
     
 #receiving messages 
 def receive(client, username, password):
     while True:
         global stopThread
-        global inRoom
+        global is_in_room
         if stopThread:
             break
         try:
             buffer = client.recv(1024).decode('ascii')
-            message = client.recv(1024).decode('ascii')
-            while(not inRoom):
-                if buffer.startswith('l'):
+            if buffer:
+                if buffer.startswith('a'):
+                    is_in_room = True
+                    print(f"Entered room: {buffer[1:]}" )
+                elif buffer.startswith('l'):
                     print(f"Rooms: {buffer[1:]}" )
-                if buffer.startswith('r'):
+                    room_choice = input ("Choose your room:")
+                    client.send(f"r{room_choice}".encode('ascii'))
+                elif buffer.startswith('r'):
                     print (f"Welcome to {buffer[1:]}" )
                     inRoom = True
-
-                if buffer.startswith('f'):
+                elif buffer.startswith('f'):
                     print("input is not valid pls try again")
-            #if buffer.startswith('m'):
-                
-            if message == 'NICK':
-                client.send(username.encode('ascii'))
-                next_msg = client.recv(1024).decode('ascii')
-                if next_msg == 'PASS' :
-                    client.send(password.encode('ascii'))
-                    if client.recv(1024).decode('ascii') == 'REFUSE' : 
-                        print("Wrong Password! Connection refused")
-                        stopThread = True
-                elif next_msg == 'BAN':
-                    print('Connection refuse - you are banned')
-                    client.close()
-                    stopThread = True
-            else:
-                print(message)
+                #if buffer.startswith('m'):
+                elif buffer.startswith('NICK'):
+                    client.send(username.encode('ascii'))
+                    client.send("l".encode('ascii'))
+                    write_thread = threading.Thread(target=write, args=(client, username))
+                    write_thread.start()
         except:
             print("Error - Houston, we have a problem")
             client.close()
             break
 
 def write(client, username):
-
     while True:
         global stopThread
+        global is_in_room
         if stopThread:
             break
-        room = input ("Choose your room:")
-        client.send(f'r{room}')
+
+        while not is_in_room:
+            pass
 
         message = f'{username}: {input("")}'
-        
+        message = 'm' + message
     
         if message[len(username)+2:].startswith('/'):
             if username == 'admin' :
