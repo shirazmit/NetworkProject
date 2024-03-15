@@ -19,8 +19,6 @@ def main():
         password = input("Enter password: ")
         result = check_user(username, password)
         
-       
-
     #connection to the server
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -44,22 +42,19 @@ def receive(client, username, password):
         try:
             buffer = client.recv(1024).decode('ascii')
             if buffer:
-                if buffer.startswith('a'):
-                    is_in_room = True
-                    print(f"Entered room: {buffer[1:]}" )
-                elif buffer.startswith('l'):
-                    print(f"Rooms: {buffer[1:]}" )
+                if buffer.startswith('l'):
+                    print(f"Rooms:\n{buffer[1:]}" )
                     room_choice = input ("Choose your room:")
                     client.send(f"r{room_choice}".encode('ascii'))
                 elif buffer.startswith('r'):
-                    print (f"Welcome to {buffer[1:]}" )
-                    inRoom = True
+                    print(f"Welcome to {buffer[1:]}\n" )
+                    is_in_room = True
                 elif buffer.startswith('f'):
                     print("input is not valid pls try again")
-                #if buffer.startswith('m'):
+                if buffer.startswith('m'):
+                    print(f"{buffer[1:]}" )
                 elif buffer.startswith('NICK'):
                     client.send(username.encode('ascii'))
-                    client.send("l".encode('ascii'))
                     write_thread = threading.Thread(target=write, args=(client, username))
                     write_thread.start()
         except:
@@ -74,10 +69,12 @@ def write(client, username):
         if stopThread:
             break
 
-        while not is_in_room:
-            pass
+        if not is_in_room:
+            client.send("l".encode('ascii'))
+            while not is_in_room:
+                pass
 
-        message = f'{username}: {input("")}'
+        message = input("")
         message = 'm' + message
     
         if message[len(username)+2:].startswith('/'):

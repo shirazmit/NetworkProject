@@ -3,10 +3,11 @@ import datetime
 from User import User
 
 class Room:
-    def __init__(self, name, users=[]):
+    def __init__(self, name, users=None):
+        if users is None:
+            users = []  # Create a new list for each instance
         self.users = users
         self.name = name
-        #self.key = key
 
     def get_users(self):
         return self.users

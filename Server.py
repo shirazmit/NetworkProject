@@ -28,10 +28,10 @@ users = []
 rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
 
 #broadcast message that sends to all the clients
-def broadcast(message, room):
+def broadcast(message, user):
     try:
-        for user in room.get_users():
-            user.get_client().send(message)
+        for u in user.get_room().get_users():
+            u.get_client().send(f'm{user.get_name()} : {message}'.encode('ascii'))
     except Exception as e:
         print(f"An exception occurred: {e}")
 
@@ -41,37 +41,30 @@ def handle(user):
             buffer = user.get_client().recv(1024).decode('ascii')
             if buffer:
                 if buffer.startswith('l'):
-                    roomList = "l"
-                    for room in rooms:
-                        roomList = roomList + room.get_name() + "\n"
-
-                    try:
-                        user.get_client().send(roomList.encode('ascii'))
-                    except Exception as e:
-                        print(f"An exception occurred: {e}")
-
+                    handle_list(user)
                 elif buffer.startswith('r'):
                     valid_room = False
                     for room in rooms:
                         if room.get_name() == buffer[1:]:
                             valid_room = True
-                            user.get_client().send(buffer.encode('ascii'))
                             room.get_users().append(user)
-                            broadcast(f'{user.get_name()} joined the chat!'.encode('ascii'), room)
                             user.set_room(room)
-                    if not valid_room:
-                        user.get_client().send('l'.encode('ascii'))
-
+                    if valid_room:
+                        user.get_client().send(buffer.encode('ascii'))
+                        time.sleep(1)
+                        broadcast("joined the chat!", user)
+                    else:
+                        handle_list(user)
                 elif buffer.startswith('m'):
-                    broadcast(buffer, user.get_room())
-                    Room.log_chat_message(user.get_name(), buffer.decode('ascii'))
+                    broadcast(buffer[1:], user)
+                    user.get_room().log_chat_message(user.get_name(), buffer)
                 
         except Exception as e:
             # Print the exception
             print(f"An exception occurred: {e}")
             if user in users:
                 user.get_client().close()
-                broadcast(f'{user.get_name()} left the chat.'.encode('ascii'), user.get_room())
+                broadcast(f'left the chat.', user)
                 users.remove(user)
                 break
 """"
@@ -132,13 +125,21 @@ def kick_user(name):
         if user.get_name() == name:
             user.get_client().send('You were kicked by the admin!'.encode('ascii'))
             user.get_client().close()
+            broadcast(f'{name} was kicked by the admin', user)
             users.remove(user)
-            broadcast(f'{name} was kicked by the admin'.encode('ascii'))
+
+def handle_list(user):
+    roomList = "l"
+    for room in rooms:
+        roomList = roomList + room.get_name() + "\n"
+
+    try:
+        user.get_client().send(roomList.encode('ascii'))
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
 print ("Server is listening...")
 receive()
-
-
 
 
 
