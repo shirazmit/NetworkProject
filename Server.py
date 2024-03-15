@@ -1,146 +1,125 @@
 import socket
 import threading
-import json
-import csv
-import datetime
-import os
 from User import User
 from Room import Room
+from MessageType import MessageType
 import time
 
-#from cryptography.hazmat.backends import default_backend
-#from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-#from cryptography.hazmat.primitives import padding
+# Helper method to read config file
+def read_config(filename='config.txt'):
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+        host = lines[0].strip()
+        port = int(lines[1].strip())
+    return host, port
 
-#server side
-#localhost
+def read_bans(file):
+    with open(file, 'r') as f:
+        bans = f.readlines()
+    return bans
 
-host = '127.0.0.1'
-port = 8000
-format = 'utf-8'
+class Server:
+    def __init__(self):
+        self.bans = read_bans('bans.txt')
+        self.host, self.port = read_config()
+        self.format = 'utf-8'
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
+        self.users = []
 
-#connection
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((host ,port))
-server.listen()
+    def start(self):
+        self.server.bind((self.host, self.port))
+        self.server.listen()
+        print("Server is listening...")
+        self.receive_connections()
 
-users = []
-rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
+    def receive_connections(self):
+        print("Server is waiting for connection...")
+        while True:
+            client, address = self.server.accept()
+            print(f'Connected with {str(address)}')
+            threading.Thread(target=self.handle_new_client, args=(client,)).start()
 
-#broadcast message that sends to all the clients
-def broadcast(message, user):
-    try:
-        for u in user.get_room().get_users():
-            u.get_client().send(f'm{user.get_name()} : {message}'.encode('ascii'))
-    except Exception as e:
-        print(f"An exception occurred: {e}")
-
-def handle(user):
-    while True:
+    def handle_new_client(self, client):
         try:
-            buffer = user.get_client().recv(1024).decode('ascii')
-            if buffer:
-                if buffer.startswith('l'):
-                    handle_list(user)
-                elif buffer.startswith('r'):
-                    valid_room = False
-                    for room in rooms:
-                        if room.get_name() == buffer[1:]:
-                            valid_room = True
-                            room.get_users().append(user)
-                            user.set_room(room)
-                    if valid_room:
-                        user.get_client().send(buffer.encode('ascii'))
-                        time.sleep(1)
-                        broadcast("joined the chat!", user)
-                    else:
-                        handle_list(user)
-                elif buffer.startswith('m'):
-                    broadcast(buffer[1:], user)
-                    user.get_room().log_chat_message(user.get_name(), buffer)
-                
-        except Exception as e:
-            # Print the exception
-            print(f"An exception occurred: {e}")
-            if user in users:
-                user.get_client().close()
-                broadcast(f'left the chat.', user)
-                users.remove(user)
-                break
-""""
-        try:
-        # Loop to receive and process each message from the client
-            for i in range(total_messages):
-                data_encrypted = conn.recv(1024)
-                data = decrypt(data_encrypted)
-                print(f"Received message #{i} from client: \"{data}\"")
-                # Echo back the decrypted message to the client after encryption
-                conn.send(encrypt(data))
-            print("\n[CLIENT DISCONNECTED] on address: ", addr)
-            print()
-        except:
-             print("[CLIENT CONNECTION INTERRUPTED] on address: ", addr)
-"""
-
-def receive():
-    print("Server is waiting for connection...")
-    while True:
-        client, address = server.accept()
-        print(f'Connected with {str(address)}')
-
-        try:
-            client.send('NICK'.encode('ascii'))
+            client.send(MessageType.SetUsername.encode('ascii'))
             username = client.recv(1024).decode('ascii')
+
+            if username + '\n' in self.bans:
+                client.send(MessageType.RefuseBan.encode('ascii'))
+                client.close()
+                return
+
+            if username == 'admin':
+                client.send('PASS'.encode('ascii'))
+                password = client.recv(1024).decode('ascii')
+                if password != 'adminPass':
+                    client.send('REFUSE'.encode('ascii'))
+                    client.close()
+                    return
+
+            user = User(username, client)
+            self.users.append(user)
+            print(f'The name of the client is {username}.')
+
+            threading.Thread(target=self.handle_user, args=(user,)).start()
+
         except Exception as e:
             print(f"An exception occurred: {e}")
 
-        with open('bans.txt', 'r') as f:
-            bans = f.readlines()
+    def handle_user(self, user):
+        while True:
+            try:
+                buffer = user.get_client().recv(1024).decode('ascii')
+                message_type = buffer[0]
+                if message_type == MessageType.ListRooms:
+                    self.send_room_list(user)
+                elif message_type == MessageType.JoinRoom:
+                    self.join_room(user, buffer)
+                elif message_type == MessageType.RegularMessage:
+                    self.broadcast_message(buffer[1:], user)
+            except Exception as e:
+                print(f"An exception occurred: {e}")
+                self.remove_user(user)
+                break
 
-        if username+'\n' in bans:
-            client.send('BAN'.encode('ascii'))
-            client.close()
-            continue
+    def join_room(self, user, buffer):
+        valid_room = False
+        for room in self.rooms:
+            if room.get_name() == buffer[1:]:
+                valid_room = True
+                room.get_users().append(user)
+                user.set_room(room)
+        if valid_room:
+            user.get_client().send(buffer.encode('ascii'))
+            time.sleep(0.1)
+            self.broadcast_message("joined the chat!", user)
+        else:
+            self.send_room_list(user)
 
-        if username == 'admin':
-            client.send('PASS'.encode('ascii'))
-            password = client.recv(1024).decode('ascii')
-            #better to use hash
-            if password != 'adminPass':
-                client.send('REFUSE'.encode('ascii'))
-                client.close()
-                continue
+    def broadcast_message(self, message, sender):
+        try:
+            for user in sender.get_room().get_users():
+                user.get_client().send(f'{MessageType.RegularMessage}{sender.get_name()} : {message}'.encode('ascii'))
+        except Exception as e:
+            print(f"An exception occurred: {e}")
 
-        user = User(username, client)
-        users.append(user)
-
-        print(f'The name of the client is {username}.')
-
-        thread = threading.Thread(target=handle, args=(user,))
-        thread.start()
-
-#kick user from the chat
-def kick_user(name):
-    for user in users:
-        if user.get_name() == name:
-            user.get_client().send('You were kicked by the admin!'.encode('ascii'))
+    def remove_user(self, user):
+        if user in self.users:
             user.get_client().close()
-            broadcast(f'{name} was kicked by the admin', user)
-            users.remove(user)
+            self.broadcast_message(f'left the chat.', user)
+            self.users.remove(user)
 
-def handle_list(user):
-    roomList = "l"
-    for room in rooms:
-        roomList = roomList + room.get_name() + "\n"
+    def send_room_list(self, user):
+        roomList = MessageType.ListRooms
+        for room in self.rooms:
+            roomList = roomList + room.get_name() + "\n"
 
-    try:
-        user.get_client().send(roomList.encode('ascii'))
-    except Exception as e:
-        print(f"An exception occurred: {e}")
+        try:
+            user.get_client().send(roomList.encode('ascii'))
+        except Exception as e:
+            print(f"An exception occurred: {e}")
 
-print ("Server is listening...")
-receive()
-
-
-
-
+if __name__ == "__main__":
+    server = Server()
+    server.start()
