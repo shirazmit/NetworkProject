@@ -1,7 +1,7 @@
-import socket
-import threading
-import csv
 from MessageType import MessageType
+import threading
+import socket
+import csv
 
 # Helper method to read config file
 def read_config(filename='config.txt'):
@@ -19,12 +19,11 @@ class Client:
         self.username = None
 
     def run(self):
-        result = False
-
-        while not result:
+        valid_user = False
+        while not valid_user:
             self.username = input("Enter username: ")
             password      = input("Enter password: ")
-            result = self.check_user(self.username, password)
+            valid_user = self.check_user(self.username, password)
             
         # Connection to the server
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,9 +39,7 @@ class Client:
         receive_thread.start()
 
     def receive(self, client):
-        while True:
-            if self.stop_thread:
-                break
+        while not self.stop_thread:
             try:
                 buffer = client.recv(1024).decode('ascii')
                 message_type = buffer[0]
@@ -54,7 +51,7 @@ class Client:
                     print(f"Welcome to {buffer[1:]}\n")
                     self.is_in_room = True
                 elif message_type == MessageType.InvalidRoom:
-                    print("input is not valid pls try again")
+                    print("input is not valid please try again")
                 elif message_type == MessageType.RegularMessage:
                     print(f"{buffer[1:]}")
                 elif message_type == MessageType.SetUsername:
@@ -67,9 +64,7 @@ class Client:
                 break
 
     def write(self, client):
-        while True:
-            if self.stop_thread:
-                break
+        while not self.stop_thread:
 
             if not self.is_in_room:
                 client.send(MessageType.ListRooms.encode('ascii'))
@@ -96,7 +91,7 @@ class Client:
             for row in reader:
                 if (row['username'] == name) and (row['password'] == psw):
                     return True
-            print("Username or Password are not valid, \n Pls try again")
+            print("Username or Password are not valid, \n Please try again")
             return False
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from User import User
 class Room:
     def __init__(self, name, users=None):
         if users is None:
-            users = []  # Create a new list for each instance
+            users = []
         self.users = users
         self.name = name
 
@@ -15,8 +15,8 @@ class Room:
     def get_name(self):
         return self.name
     
-  #  def get_key(self):
-   #     return self.key
+#   def get_key(self):
+#       return self.key
 
     def set_user(self, user):
         self.user = user

@@ -1,27 +1,14 @@
-import socket
-import threading
+from MessageType import MessageType
 from User import User
 from Room import Room
-from MessageType import MessageType
+import threading
+import socket
 import time
-
-# Helper method to read config file
-def read_config(filename='config.txt'):
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        host = lines[0].strip()
-        port = int(lines[1].strip())
-    return host, port
-
-def read_bans(file):
-    with open(file, 'r') as f:
-        bans = f.readlines()
-    return bans
 
 class Server:
     def __init__(self):
-        self.bans = read_bans('bans.txt')
-        self.host, self.port = read_config()
+        self.bans = self.read_bans('bans.txt')
+        self.host, self.port = self.read_config()
         self.format = 'utf-8'
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
@@ -119,6 +106,20 @@ class Server:
             user.get_client().send(roomList.encode('ascii'))
         except Exception as e:
             print(f"An exception occurred: {e}")
+    
+    @staticmethod
+    def read_config(filename='config.txt'):
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+            host = lines[0].strip()
+            port = int(lines[1].strip())
+        return host, port
+    
+    @staticmethod
+    def read_bans(file):
+        with open(file, 'r') as f:
+            bans = f.readlines()
+        return bans
 
 if __name__ == "__main__":
     server = Server()
