@@ -34,31 +34,6 @@ def serialize(data):
     formatted_buffer = Header + data_bytes + bytes([checksum]) + Footer
     return formatted_buffer
 
-
-def deserialize(data):
-    # Convert data from ASCII encoding
-    data = data.decode('ascii')
-    
-    # Extract header, data, checksum, and footer
-    header = data[0]
-    footer = data[-1]
-    checksum = int.from_bytes(data[-2], byteorder='big')
-    data = data[1:-2]
-    
-    # Verify header and footer
-    if header != Header or footer != Footer:
-        return False
-
-    # Calculate checksum of the data
-    calculated_checksum = sum(map(ord, data)) & 0xFF
-
-    # Verify checksum
-    if calculated_checksum != checksum:
-        return False
-    
-    return True
-
-
 def process_buffer(buffer):
     if Header in buffer and Footer in buffer:
         start_index = buffer.index(Header)

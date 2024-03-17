@@ -44,11 +44,11 @@ class Server:
             try:
                 self.buffer += client.recv(Protocol.BufferSize)
                 while (message := Protocol.process_buffer(self.buffer)):
-                    message_type = message[0]
-                    msg = message[1:]
+                    msg_type = message[0]
+                    msg_data = message[1:]
                     if not user:
-                        if message_type == Protocol.MsgType.Login:
-                            usr_psw = msg.split()
+                        if msg_type == Protocol.MsgType.Login:
+                            usr_psw = msg_data.split()
                             if self.check_user(usr_psw[0], usr_psw[1]):
                                 user = User(usr_psw[0], client)
                                 self.users.append(user)
@@ -57,12 +57,12 @@ class Server:
                             else:
                                 client.send(Protocol.serialize(Protocol.MsgType.FailLogin))
                     else: # logged in
-                        if message_type == Protocol.MsgType.ListRooms:
+                        if msg_type == Protocol.MsgType.ListRooms:
                             self.send_room_list(user)
-                        elif message_type == Protocol.MsgType.JoinRoom:
+                        elif msg_type == Protocol.MsgType.JoinRoom:
                             self.join_room(user, message)
-                        elif message_type == Protocol.MsgType.RegularMessage:
-                            self.broadcast_message(msg, user)
+                        elif msg_type == Protocol.MsgType.RegularMessage:
+                            self.broadcast_message(msg_data, user)
             except Exception as e:
                 print(f"An exception occurred2: {e}")
                 self.remove_user(user)
@@ -111,7 +111,8 @@ class Server:
         except Exception as e:
             print(f"An exception occurred5: {e}")
 
-    def check_user(self, name, psw, file_path='users.csv'):
+    @staticmethod
+    def check_user(name, psw, file_path='users.csv'):
         with open(file_path, 'r') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
