@@ -5,17 +5,14 @@ import csv
 
 class Client:
     def __init__(self):
+        self.buffer = bytearray()
         self.host, self.port = Protocol.read_config()
         self.stop_thread = False
         self.is_in_room = False
         self.username = None
+        self.password = None
 
     def run(self):
-        valid_user = False
-        while not valid_user:
-            self.username = input("Enter username: ")
-            password      = input("Enter password: ")
-            valid_user = self.check_user(self.username, password)
             
         # Connection to the server
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,60 +30,47 @@ class Client:
     def receive(self, client):
         while not self.stop_thread:
             try:
-                buffer = client.recv(Protocol.BufferSize).decode('ascii')
-                message_type = buffer[0]
-                if message_type == Protocol.MsgType.ListRooms:
-                    print(f"Rooms:\n{buffer[1:]}")
-                    room_choice = input("Choose your room:")
-                    client.send(f"{Protocol.MsgType.JoinRoom}{room_choice}".encode('ascii'))
-                elif message_type == Protocol.MsgType.JoinRoom:
-                    print(f"Welcome to {buffer[1:]}\n")
-                    self.is_in_room = True
-                elif message_type == Protocol.MsgType.InvalidRoom:
-                    print("input is not valid please try again")
-                elif message_type == Protocol.MsgType.RegularMessage:
-                    print(f"{buffer[1:]}")
-                elif message_type == Protocol.MsgType.Notification:
-                    print(f"{buffer[1:]}")
-                elif message_type == Protocol.MsgType.SetUsername:
-                    client.send(self.username.encode('ascii'))
-                    write_thread = threading.Thread(target=self.write, args=(client,))
-                    write_thread.start()
-            except:
-                print("Error - Houston, we have a problem")
+                self.buffer += client.recv(Protocol.BufferSize)
+                while (message := Protocol.process_buffer(self.buffer)):
+                    message_type = message[0]
+
+                    if message_type == Protocol.MsgType.FailLogin:
+                        print("Invalid username or password")
+                        message_type = Protocol.MsgType.Login
+
+                    if message_type == Protocol.MsgType.Login:
+                        self.username = input("Enter username: ")
+                        self.password = input("Enter password: ")
+                        client.send(Protocol.serialize(f'{Protocol.MsgType.Login}{self.username} {self.password}'))
+                    elif message_type == Protocol.MsgType.SuccessLogin:
+                        print("Login successful")
+                        client.send(Protocol.serialize(Protocol.MsgType.ListRooms))
+                    elif message_type == Protocol.MsgType.ListRooms:
+                        print(f"Rooms:\n{message[1:]}")
+                        room_choice = input("Choose your room:")
+                        client.send(Protocol.serialize(f"{Protocol.MsgType.JoinRoom}{room_choice}"))
+                    elif message_type == Protocol.MsgType.JoinRoom:
+                        print(f"Welcome to {message[1:]}\n")
+                        self.is_in_room = True
+                    elif message_type == Protocol.MsgType.InvalidRoom:
+                        print("input is not valid please try again")
+                    elif message_type == Protocol.MsgType.RegularMessage:
+                        print(f"{message[1:]}")
+                    elif message_type == Protocol.MsgType.Notification:
+                        print(f"{message[1:]}")
+                    elif message_type == Protocol.MsgType.SuccessRoom:
+                        write_thread = threading.Thread(target=self.write, args=(client,))
+                        write_thread.start()
+            except Exception as e:
+                print(f"An exception occurred2: {e}")
                 client.close()
                 break
 
     def write(self, client):
         while not self.stop_thread:
-
-            if not self.is_in_room:
-                client.send(Protocol.MsgType.ListRooms.encode('ascii'))
-                while not self.is_in_room:
-                    pass
-
             message = input("")
             message = Protocol.MsgType.RegularMessage + message
-
-            if message[len(self.username) + 2:].startswith('/'):
-                if self.username == 'admin':
-                    if message[len(self.username) + 2:].startswith('/kick'):
-                        client.send(f'KICK {message[len(self.username) + 2 + 6:]}'.encode('ascii'))
-                    elif message[len(self.username) + 2:].startswith('/ban'):
-                        client.send(f'BAN {message[len(self.username) + 2 + 5:]}'.encode('ascii'))
-                else:
-                    print("Only the admin allowed to send commands")
-            else:
-                client.send(message.encode('ascii'))
-
-    def check_user(self, name, psw, file_path='users.csv'):
-        with open(file_path, 'r') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                if (row['username'] == name) and (row['password'] == psw):
-                    return True
-            print("Username or Password are not valid, \n Please try again")
-            return False
+            client.send(Protocol.serialize(message))
 
 if __name__ == "__main__":
     client = Client()
