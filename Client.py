@@ -1,19 +1,11 @@
-from MessageType import MessageType
+import Protocol
 import threading
 import socket
 import csv
 
-# Helper method to read config file
-def read_config(filename='config.txt'):
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        host = lines[0].strip()
-        port = int(lines[1].strip())
-    return host, port
-
 class Client:
     def __init__(self):
-        self.host, self.port = read_config()
+        self.host, self.port = Protocol.read_config()
         self.stop_thread = False
         self.is_in_room = False
         self.username = None
@@ -41,20 +33,22 @@ class Client:
     def receive(self, client):
         while not self.stop_thread:
             try:
-                buffer = client.recv(1024).decode('ascii')
+                buffer = client.recv(Protocol.BufferSize).decode('ascii')
                 message_type = buffer[0]
-                if message_type == MessageType.ListRooms:
+                if message_type == Protocol.MsgType.ListRooms:
                     print(f"Rooms:\n{buffer[1:]}")
                     room_choice = input("Choose your room:")
-                    client.send(f"{MessageType.JoinRoom}{room_choice}".encode('ascii'))
-                elif message_type == MessageType.JoinRoom:
+                    client.send(f"{Protocol.MsgType.JoinRoom}{room_choice}".encode('ascii'))
+                elif message_type == Protocol.MsgType.JoinRoom:
                     print(f"Welcome to {buffer[1:]}\n")
                     self.is_in_room = True
-                elif message_type == MessageType.InvalidRoom:
+                elif message_type == Protocol.MsgType.InvalidRoom:
                     print("input is not valid please try again")
-                elif message_type == MessageType.RegularMessage:
+                elif message_type == Protocol.MsgType.RegularMessage:
                     print(f"{buffer[1:]}")
-                elif message_type == MessageType.SetUsername:
+                elif message_type == Protocol.MsgType.Notification:
+                    print(f"{buffer[1:]}")
+                elif message_type == Protocol.MsgType.SetUsername:
                     client.send(self.username.encode('ascii'))
                     write_thread = threading.Thread(target=self.write, args=(client,))
                     write_thread.start()
@@ -67,12 +61,12 @@ class Client:
         while not self.stop_thread:
 
             if not self.is_in_room:
-                client.send(MessageType.ListRooms.encode('ascii'))
+                client.send(Protocol.MsgType.ListRooms.encode('ascii'))
                 while not self.is_in_room:
                     pass
 
             message = input("")
-            message = MessageType.RegularMessage + message
+            message = Protocol.MsgType.RegularMessage + message
 
             if message[len(self.username) + 2:].startswith('/'):
                 if self.username == 'admin':

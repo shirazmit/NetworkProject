@@ -1,4 +1,4 @@
-from MessageType import MessageType
+import Protocol
 from User import User
 from Room import Room
 import threading
@@ -7,9 +7,9 @@ import time
 
 class Server:
     def __init__(self):
+        self.host, self.port = Protocol.read_config()
         self.bans = self.read_bans('bans.txt')
-        self.host, self.port = self.read_config()
-        self.format = 'utf-8'
+        self.format = Protocol.Format
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
         self.users = []
@@ -29,17 +29,17 @@ class Server:
 
     def handle_new_client(self, client):
         try:
-            client.send(MessageType.SetUsername.encode('ascii'))
-            username = client.recv(1024).decode('ascii')
+            client.send(Protocol.MsgType.SetUsername.encode('ascii'))
+            username = client.recv(Protocol.BufferSize).decode('ascii')
 
             if username + '\n' in self.bans:
-                client.send(MessageType.RefuseBan.encode('ascii'))
+                client.send(Protocol.MsgType.RefuseBan.encode('ascii'))
                 client.close()
                 return
 
             if username == 'admin':
                 client.send('PASS'.encode('ascii'))
-                password = client.recv(1024).decode('ascii')
+                password = client.recv(Protocol.BufferSize).decode('ascii')
                 if password != 'adminPass':
                     client.send('REFUSE'.encode('ascii'))
                     client.close()
@@ -57,13 +57,13 @@ class Server:
     def handle_user(self, user):
         while True:
             try:
-                buffer = user.get_client().recv(1024).decode('ascii')
+                buffer = user.get_client().recv(Protocol.BufferSize).decode('ascii')
                 message_type = buffer[0]
-                if message_type == MessageType.ListRooms:
+                if message_type == Protocol.MsgType.ListRooms:
                     self.send_room_list(user)
-                elif message_type == MessageType.JoinRoom:
+                elif message_type == Protocol.MsgType.JoinRoom:
                     self.join_room(user, buffer)
-                elif message_type == MessageType.RegularMessage:
+                elif message_type == Protocol.MsgType.RegularMessage:
                     self.broadcast_message(buffer[1:], user)
             except Exception as e:
                 print(f"An exception occurred: {e}")
@@ -73,47 +73,45 @@ class Server:
     def join_room(self, user, buffer):
         valid_room = False
         for room in self.rooms:
-            if room.get_name() == buffer[1:]:
+            if room.get_id() == buffer[1:]:
                 valid_room = True
-                room.get_users().append(user)
-                user.set_room(room)
+                user.join_room(room)
         if valid_room:
             user.get_client().send(buffer.encode('ascii'))
             time.sleep(0.1)
-            self.broadcast_message("joined the chat!", user)
+            self.broadcast_notification(f"{user.get_uid()} joined the chat!", user)
         else:
             self.send_room_list(user)
 
     def broadcast_message(self, message, sender):
         try:
             for user in sender.get_room().get_users():
-                user.get_client().send(f'{MessageType.RegularMessage}{sender.get_name()} : {message}'.encode('ascii'))
+                user.get_client().send(f'{Protocol.MsgType.RegularMessage}{sender.get_uid()} : {message}'.encode('ascii'))
+        except Exception as e:
+            print(f"An exception occurred: {e}")
+
+    def broadcast_notification(self, message, sender):
+        try:
+            for user in sender.get_room().get_users():
+                user.get_client().send(f'{Protocol.MsgType.Notification}{message}'.encode('ascii'))
         except Exception as e:
             print(f"An exception occurred: {e}")
 
     def remove_user(self, user):
         if user in self.users:
             user.get_client().close()
-            self.broadcast_message(f'left the chat.', user)
+            self.broadcast_notification(f'{user.get_uid()} left the chat.', user)
             self.users.remove(user)
 
     def send_room_list(self, user):
-        roomList = MessageType.ListRooms
+        roomList = Protocol.MsgType.ListRooms
         for room in self.rooms:
-            roomList = roomList + room.get_name() + "\n"
-
+            roomList = roomList + room.get_id() + "\n"
+        
         try:
             user.get_client().send(roomList.encode('ascii'))
         except Exception as e:
             print(f"An exception occurred: {e}")
-    
-    @staticmethod
-    def read_config(filename='config.txt'):
-        with open(filename, 'r') as f:
-            lines = f.readlines()
-            host = lines[0].strip()
-            port = int(lines[1].strip())
-        return host, port
     
     @staticmethod
     def read_bans(file):
