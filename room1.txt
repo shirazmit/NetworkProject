@@ -1,27 +1,4 @@
-2024-03-14 18:36:36 - ori: ori: helo
-2024-03-14 18:37:02 - shiraz: shiraz: hellloooo
-2024-03-14 18:37:45 - shiraz: shiraz: 
-2024-03-14 18:37:45 - shiraz: shiraz: 
-2024-03-14 18:37:59 - shiraz: shiraz: how are you today? 
-2024-03-14 18:38:12 - ori: ori: i'm ok thank you 
-2024-03-14 19:48:46 - oriori: asd: ori: s
-2024-03-15 15:41:20 - ori: mori: sd
-2024-03-15 15:41:21 - ori: mori: sdfsd
-2024-03-15 15:42:52 - ori: mori: asdf
-2024-03-15 15:42:54 - ori: mori: asdfsad
-2024-03-15 15:43:17 - ori: mori: asdf
-2024-03-15 15:43:19 - ori: mori: asdf
-2024-03-15 15:43:50 - ori: mori: sadfas
-2024-03-15 15:43:53 - ori: mori: bbb
-2024-03-15 15:45:22 - ori: mori: asdf
-2024-03-15 15:45:24 - ori: mori: fsadfas
-2024-03-15 15:45:25 - ori: mori: bbb
-2024-03-15 15:47:40 - ori: msadf
-2024-03-15 15:47:42 - ori: mfgds
-2024-03-15 15:58:34 - ori: msadf
-2024-03-15 15:59:10 - ori: masdfas
-2024-03-15 15:59:12 - ori: msadfasdf
-2024-03-15 16:00:40 - idan: msadfas
-2024-03-15 16:13:40 - idan: masdfasdfsa
-2024-03-15 16:13:41 - idan: masdfas
-2024-03-15 16:13:42 - idan: masdfasdf
+2024-03-17 21:15:16 ori : asdfassaf
+2024-03-17 21:15:17 ori : bbb
+2024-03-17 21:15:22 ori : Hello
+2024-03-17 21:15:36 idan : how are you

@@ -1,5 +1,3 @@
-import datetime
-
 class Room:
     def __init__(self, id, users=None):
         if users is None:
@@ -26,8 +24,22 @@ class Room:
         if user in self.users:
             self.users.remove(user)
 
-    def log_chat_message(self, sender, message):
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(f'{self.id}.txt', 'a') as chat_log:
-            chat_log.write(f'{timestamp} - {sender}: {message}\n')
+    def log_chat_message(self, message):
+        try:
+            with open(f'{self.id}.txt', 'a') as chat_log:
+                chat_log.write(f'{message}\n')
+        except FileNotFoundError:
+            # If the file doesn't exist, create it and then write the message
+            with open(f'{self.id}.txt', 'w') as chat_log:
+                chat_log.write(f'{message}\n')
 
+    def load_chat_messages(self):
+        ret = ""
+        try:
+            with open(f'{self.id}.txt', 'r') as chat_log:
+                for line in chat_log:
+                    ret += line
+            return ret
+        except FileNotFoundError:
+            print("Initial chat log not found.")
+            return ""

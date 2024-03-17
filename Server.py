@@ -5,6 +5,7 @@ import threading
 import socket
 import csv
 import time
+import datetime
 
 class Server:
     def __init__(self):
@@ -25,42 +26,42 @@ class Server:
     def receive_connections(self):
         print("Server is waiting for connection...")
         while True:
-            client, address = self.server.accept()
+            sock, address = self.server.accept()
             print(f'Connected with {str(address)}')
-            threading.Thread(target=self.handle_new_client, args=(client,)).start()
+            threading.Thread(target=self.handle_new_client, args=(sock,)).start()
 
-    def handle_new_client(self, client):
+    def handle_new_client(self, sock):
         try:
-            client.send(Protocol.serialize(Protocol.MsgType.Login)) # Send login request
+            sock.send(Protocol.serialize(Protocol.MsgType.Login, "")) # Send login request
 
-            threading.Thread(target=self.handle_user, args=(client,)).start()
+            threading.Thread(target=self.handle_user, args=(sock,)).start()
 
         except Exception as e:
             print(f"An exception occurred1: {e}")
 
-    def handle_user(self, client):
+    def handle_user(self, sock):
         user = None
         while True:
             try:
-                self.buffer += client.recv(Protocol.BufferSize)
+                self.buffer += sock.recv(Protocol.BufferSize)
                 while (message := Protocol.process_buffer(self.buffer)):
                     msg_type = message[0]
                     msg_data = message[1:]
                     if not user:
                         if msg_type == Protocol.MsgType.Login:
-                            usr_psw = msg_data.split()
-                            if self.check_user(usr_psw[0], usr_psw[1]):
-                                user = User(usr_psw[0], client)
+                            uid_psw = msg_data.split()
+                            if self.check_user(uid_psw[0], uid_psw[1]):
+                                user = User(uid_psw[0], sock, uid_psw[0] == 'admin')
                                 self.users.append(user)
-                                print(f'The name of the client is {usr_psw[0]}.')
-                                client.send(Protocol.serialize(Protocol.MsgType.SuccessLogin))
+                                print(f'The name of the user is {uid_psw[0]}.')
+                                sock.send(Protocol.serialize(Protocol.MsgType.SuccessLogin, ""))
                             else:
-                                client.send(Protocol.serialize(Protocol.MsgType.FailLogin))
+                                sock.send(Protocol.serialize(Protocol.MsgType.FailLogin, ""))
                     else: # logged in
                         if msg_type == Protocol.MsgType.ListRooms:
                             self.send_room_list(user)
                         elif msg_type == Protocol.MsgType.JoinRoom:
-                            self.join_room(user, message)
+                            self.join_room(user, msg_data)
                         elif msg_type == Protocol.MsgType.RegularMessage:
                             self.broadcast_message(msg_data, user)
             except Exception as e:
@@ -68,46 +69,50 @@ class Server:
                 self.remove_user(user)
                 break
 
-    def join_room(self, user, buf):
+    def join_room(self, user, choice):
         valid_room = False
         for room in self.rooms:
-            if room.get_id() == buf[1:]:
+            if room.get_id() == choice:
                 valid_room = True
                 user.join_room(room)
+                
         if valid_room:
-            user.get_client().send(Protocol.serialize(buf))
-            user.get_client().send(Protocol.serialize(Protocol.MsgType.SuccessRoom))
+            user.get_socket().send(Protocol.serialize(Protocol.MsgType.JoinRoom, choice))
+            chatlog = user.get_room().load_chat_messages()
+            user.get_socket().send(Protocol.serialize(Protocol.MsgType.RegularMessage, chatlog))
             self.broadcast_notification(f"{user.get_uid()} joined the chat!", user)
         else:
             self.send_room_list(user)
 
     def broadcast_message(self, message, sender):
         try:
+            msg = f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} {sender.get_uid()} : {message}'
+            sender.get_room().log_chat_message(msg)
             for user in sender.get_room().get_users():
-                user.get_client().send(Protocol.serialize(f'{Protocol.MsgType.RegularMessage}{sender.get_uid()} : {message}'))
+                user.get_socket().send(Protocol.serialize(Protocol.MsgType.RegularMessage, msg))
         except Exception as e:
             print(f"An exception occurred3: {e}")
 
     def broadcast_notification(self, message, sender):
         try:
             for user in sender.get_room().get_users():
-                user.get_client().send(Protocol.serialize(f'{Protocol.MsgType.Notification}{message}'))
+                user.get_socket().send(Protocol.serialize(Protocol.MsgType.Notification, message))
         except Exception as e:
             print(f"An exception occurred4: {e}")
 
     def remove_user(self, user):
         if user in self.users:
-            user.get_client().close()
+            user.get_socket().close()
             self.broadcast_notification(f'{user.get_uid()} left the chat.', user)
             self.users.remove(user)
 
     def send_room_list(self, user):
-        roomList = Protocol.MsgType.ListRooms
+        roomList = ""
         for room in self.rooms:
             roomList = roomList + room.get_id() + "\n"
         
         try:
-            user.get_client().send(Protocol.serialize(roomList))
+            user.get_socket().send(Protocol.serialize(Protocol.MsgType.ListRooms, roomList))
         except Exception as e:
             print(f"An exception occurred5: {e}")
 

@@ -1,16 +1,17 @@
 import socket
 
 class User:
-    def __init__(self, uid, client):
+    def __init__(self, uid, socket, is_admin=False):
         self.uid = uid
-        self.client = client
+        self.socket = socket
         self.room = None
+        self.is_admin = is_admin
 
     def get_uid(self):
         return self.uid
 
-    def get_client(self):
-        return self.client
+    def get_socket(self):
+        return self.socket
     
     def get_room(self):
         return self.room
@@ -18,8 +19,8 @@ class User:
     def set_uid(self, uid):
         self.uid = uid
 
-    def set_client(self, client):
-        self.client = client
+    def set_socket(self, socket):
+        self.socket = socket
 
     def join_room(self, room):
         if self.room:
