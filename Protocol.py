@@ -9,7 +9,11 @@ class MsgType:
     Notification   = 'j'
     Login          = 'p'
     SuccessLogin   = 'v'
+    LeaveRoom      = 'e'
     FailLogin      = 'g'
+
+class MsgCommands:
+    LeaveRoom   = 'leaveroom'
 
 # Define constants for the message format and communication parameters
 Format = 'utf-8'  # Encoding format for data conversion

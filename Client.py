@@ -53,6 +53,8 @@ class Client:
                         self.is_in_room = True
                         write_thread = threading.Thread(target=self.write, args=(sock,))
                         write_thread.start()
+                    elif message_type == Protocol.MsgType.LeaveRoom:
+                        self.is_in_room = False
                     elif message_type == Protocol.MsgType.InvalidRoom:
                         print("input is not valid please try again")
                     elif message_type == Protocol.MsgType.RegularMessage:
@@ -61,15 +63,16 @@ class Client:
                         print(f"{message[1:]}")
 
             except Exception as e:
-                print(f"An exception occurred2: {e}")
+                print(f"An exception occurred: {e}")
                 sock.close()
                 break
 
     # Write standard message
     def write(self, sock):
-        while not self.stop_thread:
+        while self.is_in_room:
             message = input("")
-            sock.send(Protocol.serialize(Protocol.MsgType.RegularMessage, message))
+            if self.is_in_room:
+                sock.send(Protocol.serialize(Protocol.MsgType.RegularMessage, message))
 
 if __name__ == "__main__":
     client = Client()

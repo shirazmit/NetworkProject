@@ -37,7 +37,7 @@ class Server:
             threading.Thread(target=self.handle_user, args=(sock,)).start()
 
         except Exception as e:
-            print(f"An exception occurred1: {e}")
+            print(f"An exception occurred: {e}")
 
     def handle_user(self, sock):
         user = None
@@ -63,9 +63,13 @@ class Server:
                         elif msg_type == Protocol.MsgType.JoinRoom:
                             self.join_room(user, msg_data)
                         elif msg_type == Protocol.MsgType.RegularMessage:
-                            self.broadcast_message(msg_data, user)
+                            if str(msg_data).lower() == Protocol.MsgCommands.LeaveRoom:
+                                sock.send(Protocol.serialize(Protocol.MsgType.LeaveRoom, ""))
+                                self.send_room_list(user)
+                            else:
+                                self.broadcast_message(msg_data, user)
             except Exception as e:
-                print(f"An exception occurred2: {e}")
+                print(f"An exception occurred: {e}")
                 self.remove_user(user)
                 break
 
@@ -91,14 +95,14 @@ class Server:
             for user in sender.get_room().get_users():
                 user.get_socket().send(Protocol.serialize(Protocol.MsgType.RegularMessage, msg))
         except Exception as e:
-            print(f"An exception occurred3: {e}")
+            print(f"An exception occurred: {e}")
 
     def broadcast_notification(self, message, sender):
         try:
             for user in sender.get_room().get_users():
                 user.get_socket().send(Protocol.serialize(Protocol.MsgType.Notification, message))
         except Exception as e:
-            print(f"An exception occurred4: {e}")
+            print(f"An exception occurred: {e}")
 
     def remove_user(self, user):
         if user in self.users:
@@ -114,7 +118,7 @@ class Server:
         try:
             user.get_socket().send(Protocol.serialize(Protocol.MsgType.ListRooms, roomList))
         except Exception as e:
-            print(f"An exception occurred5: {e}")
+            print(f"An exception occurred: {e}")
 
     @staticmethod
     def check_user(name, psw, file_path='users.csv'):
