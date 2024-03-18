@@ -12,8 +12,12 @@ class MsgType:
     LeaveRoom      = 'e'
     FailLogin      = 'g'
 
-class MsgCommands:
-    LeaveRoom   = 'leaveroom'
+class UsrCommands:
+    LeaveRoom     = 'leaveroom'
+    ViewAllUsers  = 'viewallusers'
+
+class AdminCommands:
+    KickUser    = 'kickuser'
 
 # Define constants for the message format and communication parameters
 Format = 'utf-8'  # Encoding format for data conversion

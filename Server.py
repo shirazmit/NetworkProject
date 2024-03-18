@@ -63,15 +63,23 @@ class Server:
                         elif msg_type == Protocol.MsgType.JoinRoom:
                             self.join_room(user, msg_data)
                         elif msg_type == Protocol.MsgType.RegularMessage:
-                            if str(msg_data).lower() == Protocol.MsgCommands.LeaveRoom:
+                            if str(msg_data).lower() == Protocol.UsrCommands.LeaveRoom:
                                 sock.send(Protocol.serialize(Protocol.MsgType.LeaveRoom, ""))
                                 self.send_room_list(user)
+                            elif str(msg_data).lower() == Protocol.UsrCommands.ViewAllUsers:
+                                self.send_usr_list(sock)
                             else:
                                 self.broadcast_message(msg_data, user)
             except Exception as e:
                 print(f"An exception occurred: {e}")
                 self.remove_user(user)
                 break
+
+    def send_usr_list(self, sock):
+        msg = "Connected Users:\n"
+        for usr in self.users:
+            msg += usr.get_uid() + '\n'
+        sock.send(Protocol.serialize(Protocol.MsgType.RegularMessage, msg))
 
     def join_room(self, user, choice):
         valid_room = False
