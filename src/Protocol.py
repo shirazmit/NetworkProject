@@ -25,7 +25,7 @@ BufferSize = 1024  # Size of the buffer for reading data
 Header = bytes([0x01])  # Start of message marker
 Footer = bytes([0x03])  # End of message marker
 
-def read_config(filename='config.txt'):
+def read_config(filename='../data/config.txt'):
     """
     Reads host and port configuration from a file.
 

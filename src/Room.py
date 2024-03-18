@@ -1,7 +1,8 @@
 class Room:
-    def __init__(self, id, users=None):
+    def __init__(self, id, users=None, dir='../log'):
         if users is None:
             users = []
+        self.dir = dir
         self.users = users
         self.id = id
 
@@ -26,17 +27,17 @@ class Room:
 
     def log_chat_message(self, message):
         try:
-            with open(f'{self.id}.txt', 'a') as chat_log:
+            with open(f'{self.dir}/{self.id}.txt', 'a') as chat_log:
                 chat_log.write(f'{message}\n')
         except FileNotFoundError:
             # If the file doesn't exist, create it and then write the message
-            with open(f'{self.id}.txt', 'w') as chat_log:
+            with open(f'{self.dir}/{self.id}.txt', 'w') as chat_log:
                 chat_log.write(f'{message}\n')
 
     def load_chat_messages(self):
         ret = ""
         try:
-            with open(f'{self.id}.txt', 'r') as chat_log:
+            with open(f'{self.dir}/{self.id}.txt', 'r') as chat_log:
                 for line in chat_log:
                     ret += line
             return ret

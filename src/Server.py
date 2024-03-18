@@ -11,7 +11,7 @@ class Server:
     def __init__(self):
         self.buffer = bytearray()
         self.host, self.port = Protocol.read_config()
-        self.bans = self.read_bans('bans.txt')
+        self.bans = self.read_bans('../data/bans.txt')
         self.format = Protocol.Format
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
@@ -129,7 +129,7 @@ class Server:
             print(f"An exception occurred: {e}")
 
     @staticmethod
-    def check_user(name, psw, file_path='users.csv'):
+    def check_user(name, psw, file_path='../data/users.csv'):
         with open(file_path, 'r') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
