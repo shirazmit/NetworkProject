@@ -23,8 +23,9 @@ class Client:
             return
         
         # Receive message from the server and send it to the server
-        receive_thread = threading.Thread(target=self.receive, args=(sock,))
-        receive_thread.start()
+        self.receive_thread = threading.Thread(target=self.receive, args=(sock,))
+        self.receive_thread.start()
+        self.receive_thread.join()
 
     def receive(self, sock):
         while not self.stop_thread:
@@ -51,8 +52,8 @@ class Client:
                     elif message_type == Protocol.MsgType.JoinRoom:
                         print(f"Welcome to {message[1:]}\n")
                         self.is_in_room = True
-                        write_thread = threading.Thread(target=self.write, args=(sock,))
-                        write_thread.start()
+                        self.write_thread = threading.Thread(target=self.write, args=(sock,))
+                        self.write_thread.start()
                     elif message_type == Protocol.MsgType.LeaveRoom:
                         self.is_in_room = False
                     elif message_type == Protocol.MsgType.InvalidRoom:
@@ -61,7 +62,12 @@ class Client:
                         print(f"{message[1:]}")
                     elif message_type == Protocol.MsgType.Notification:
                         print(f"{message[1:]}")
-
+                    elif message_type == Protocol.MsgType.Exit:
+                        print("Press enter to exit")
+                        self.is_in_room = False
+                        self.stop_thread = True
+                        self.write_thread.join()
+                        sock.close()
             except Exception as e:
                 print(f"An exception occurred: {e}")
                 sock.close()

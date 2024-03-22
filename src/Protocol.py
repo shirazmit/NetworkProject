@@ -11,10 +11,12 @@ class MsgType:
     SuccessLogin   = 'v'
     LeaveRoom      = 'e'
     FailLogin      = 'g'
+    Exit           = 'k'
 
 class UsrCommands:
     LeaveRoom     = 'leaveroom'
     ViewAllUsers  = 'viewallusers'
+    Exit          = 'exit'
 
 class AdminCommands:
     KickUser    = 'kickuser'

@@ -9,13 +9,13 @@ import datetime
 
 class Server:
     def __init__(self):
-        self.buffer = bytearray()
         self.host, self.port = Protocol.read_config()
         self.bans = self.read_bans('../data/bans.txt')
         self.format = Protocol.Format
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rooms = [Room("room0"), Room("room1"), Room("room2"), Room("room3")]
         self.users = []
+        self.user_threads = []
 
     def start(self):
         self.server.bind((self.host, self.port))
@@ -28,23 +28,19 @@ class Server:
         while True:
             sock, address = self.server.accept()
             print(f'Connected with {str(address)}')
-            threading.Thread(target=self.handle_new_client, args=(sock,)).start()
-
-    def handle_new_client(self, sock):
-        try:
-            sock.send(Protocol.serialize(Protocol.MsgType.Login, "")) # Send login request
-
-            threading.Thread(target=self.handle_user, args=(sock,)).start()
-
-        except Exception as e:
-            print(f"An exception occurred: {e}")
+            t = threading.Thread(target=self.handle_user, args=(sock,))
+            self.user_threads.append(t)
+            t.start()
 
     def handle_user(self, sock):
+        sock.send(Protocol.serialize(Protocol.MsgType.Login, "")) # Send login request
         user = None
-        while True:
+        sock_open = True
+        buffer = bytearray()
+        while sock_open:
             try:
-                self.buffer += sock.recv(Protocol.BufferSize)
-                while (message := Protocol.process_buffer(self.buffer)):
+                buffer += sock.recv(Protocol.BufferSize)
+                while (message := Protocol.process_buffer(buffer)):
                     msg_type = message[0]
                     msg_data = message[1:]
                     if not user:
@@ -65,9 +61,16 @@ class Server:
                         elif msg_type == Protocol.MsgType.RegularMessage:
                             if str(msg_data).lower() == Protocol.UsrCommands.LeaveRoom:
                                 sock.send(Protocol.serialize(Protocol.MsgType.LeaveRoom, ""))
+                                self.broadcast_message(f"{user.get_uid} Has left the room", user)
+                                user.leave_room()
                                 self.send_room_list(user)
                             elif str(msg_data).lower() == Protocol.UsrCommands.ViewAllUsers:
                                 self.send_usr_list(sock)
+                            elif str(msg_data).lower() == Protocol.UsrCommands.Exit:
+                                user.leave_room()
+                                sock.send(Protocol.serialize(Protocol.MsgType.Exit, ""))
+                                sock.close()
+                                sock_open = False
                             else:
                                 self.broadcast_message(msg_data, user)
             except Exception as e:
