@@ -1,3 +1,5 @@
+from EncryptionHandler import EncryptionHandler
+
 class MsgType:
     # Define message types as class attributes for better organization and readability
     ListRooms      = 'l'
@@ -54,6 +56,8 @@ def serialize(msg_type, data):
     # Convert data from string to bytes using ASCII encoding
     data_bytes = data.encode('ascii')
 
+    data_bytes = EncryptionHandler.encrypt(data_bytes)
+
     # Calculate checksum by summing up the ASCII values and masking with 0xFF
     checksum = sum(data_bytes) & 0xFF
 
@@ -89,6 +93,7 @@ def process_buffer(buffer):
         if calculated_checksum == checksum:
             # Remove the processed part of the buffer
             del buffer[:end_index]
+            message = EncryptionHandler.decrypt(message)
             return message.decode('ascii')  # Decode message to string
         
         print("invalid checksum")

@@ -69,7 +69,7 @@ class Client:
                         self.write_thread.join()
                         sock.close()
             except Exception as e:
-                print(f"An exception occurred: {e}")
+                print(f"An exception occurred1: {e}")
                 sock.close()
                 break
 

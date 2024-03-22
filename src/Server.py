@@ -74,7 +74,7 @@ class Server:
                             else:
                                 self.broadcast_message(msg_data, user)
             except Exception as e:
-                print(f"An exception occurred: {e}")
+                print(f"An exception occurred2: {e}")
                 self.remove_user(user)
                 break
 
@@ -106,14 +106,14 @@ class Server:
             for user in sender.get_room().get_users():
                 user.get_socket().send(Protocol.serialize(Protocol.MsgType.RegularMessage, msg))
         except Exception as e:
-            print(f"An exception occurred: {e}")
+            print(f"An exception occurred7: {e}")
 
     def broadcast_notification(self, message, sender):
         try:
             for user in sender.get_room().get_users():
                 user.get_socket().send(Protocol.serialize(Protocol.MsgType.Notification, message))
         except Exception as e:
-            print(f"An exception occurred: {e}")
+            print(f"An exception occurred3: {e}")
 
     def remove_user(self, user):
         if user in self.users:
@@ -129,7 +129,7 @@ class Server:
         try:
             user.get_socket().send(Protocol.serialize(Protocol.MsgType.ListRooms, roomList))
         except Exception as e:
-            print(f"An exception occurred: {e}")
+            print(f"An exception occurred4: {e}")
 
     @staticmethod
     def check_user(name, psw, file_path='../data/users.csv'):
